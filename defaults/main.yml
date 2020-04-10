@@ -1,4 +1,49 @@
----
-network_ether_interfaces: []
-network_bridge_interfaces: []
-network_bond_interfaces: []
+---  
+# setup for network interfaces (mirror of vps)
+network_global_dhcp: false
+# define a default ip from actual interfaces
+network_default_ipv4: 
+network_default_ipv4_test: host_prefix | unique | ipv4('host/prefix') | first
+network_default_ipv4_gateway: "{{ network_default_ipv4 | ipaddr('address/prefix') | ipaddr('1') | ipaddr('address') }}"
+network_default_ipv6: host_prefix | unique | ipv6('host/prefix') | first
+network_default_ipv6_gateway: "{{ network_default_ipv6 | ipaddr('gateway') | default(false) }}"
+
+# base static interface
+network_ether_interfaces_base: 
+    # IPV4 default interface
+  - device: "eth0"
+    bootproto: "{% if network_default_ipv4 != false %}static{% else %}dhcp{% endif %}"
+    address: "{{ network_default_ipv4 }}"
+    dns_search: invalid
+    netmask: 255.255.192.0
+    # Open dns servers
+    dns_nameserver: 208.67.222.222 208.67.220.220
+    # don't forget to install ipaddr python module
+    gateway: "{{ network_default_ipv4_gateway }}"
+    route:
+      - network: "{{ network_default_ipv4 }}"
+        netmask: 255.255.192.0
+        gateway: "{{ network_default_ipv4_gateway }}"
+      
+  # IPV6 default interfaces
+  - device: "eth0"
+    ipv6: true
+    bootproto: "{% if network_default_ipv6 != false %}static{% else %}dhcp{% endif %}"
+    address: "{{ network_default_ipv6 }}"
+    netmask: 64
+    gateway: "{{ network_default_ipv6 | ipaddr('gateway') | default(false) }}"
+    options: 
+      - { key: accept_ra, value: 0}
+      - { key: autoconf, value: 0}
+      - { key: privext, value: 0}
+
+network_ether_interfaces_extra: []
+network_ether_interfaces: "{{ network_ether_interfaces_base + network_ether_interfaces_extra }}"
+
+network_bridge_interfaces_base: []
+network_bridge_interfaces_extra: []
+network_bridge_interfaces: "{{ network_bridge_interfaces_base + network_bridge_interfaces_extra }}"
+
+network_bond_interfaces_base: []
+network_bond_interfaces_extra: []
+network_bond_interfaces: "{{ network_bond_interfaces_base + network_bond_interfaces_extra }}"
